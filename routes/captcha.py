@@ -1,4 +1,5 @@
 import requests
+import time
 import base64
 from fastapi import APIRouter, HTTPException
 from bs4 import BeautifulSoup
@@ -7,7 +8,14 @@ import uuid
 from typing import Dict, Any
 from schemas.captcha import CaptchaResponse, CaptchaStatusResponse
 
+# Almacén en memoria para asociar session_id con campos ocultos y cookies
+# Estructura: { session_id: { 'hidden_fields': Dict[str,str], 'cookies': Dict[str,str] } }
+captcha_store: Dict[str, Dict[str, Any]] = {}
+
 router = APIRouter()
+
+# Tiempo de vida de una sesión de captcha en segundos (5 minutos)
+CAPTCHA_TTL_SECONDS = 300
 
 @router.get("/captcha", response_model=CaptchaResponse)
 async def get_captcha() -> CaptchaResponse:
@@ -16,6 +24,15 @@ async def get_captcha() -> CaptchaResponse:
     junto con el contenido del div en formato JSON.
     """
     try:
+        # Purgar sesiones expiradas antes de crear una nueva
+        try:
+            now = time.time()
+            expired = [sid for sid, data in captcha_store.items() if now - data.get('created_at', now) > CAPTCHA_TTL_SECONDS]
+            for sid in expired:
+                del captcha_store[sid]
+        except Exception:
+            pass
+
         # URL del SAES
         saes_url = "https://www.saes.upiicsa.ipn.mx/"
         
@@ -97,6 +114,16 @@ async def get_captcha() -> CaptchaResponse:
             "cookies": dict(session.cookies),
             "status": "success"
         }
+        # Guardar en memoria para que el endpoint de login lo recupere automáticamente
+        try:
+            captcha_store[session_id] = {
+                "hidden_fields": hidden_fields,
+                "cookies": dict(session.cookies),
+                "created_at": time.time(),
+            }
+        except Exception:
+            # En caso de algún problema con el almacenamiento en memoria, continuamos sin bloquear la respuesta
+            pass
         
         return captcha_data
         

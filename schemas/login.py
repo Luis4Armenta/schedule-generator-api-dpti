@@ -8,8 +8,6 @@ class LoginRequest(BaseModel):
     boleta: str
     password: str
     captcha_code: str
-    hidden_fields: Dict[str, str]
-    cookies: Dict[str, str]
 
 
 class PeriodoOption(BaseModel):

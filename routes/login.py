@@ -3,6 +3,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from bs4 import BeautifulSoup
 from typing import Dict
+from routes.captcha import captcha_store, CAPTCHA_TTL_SECONDS
 
 from schemas.login import (
     LoginRequest,
@@ -23,8 +24,35 @@ async def login_saes(login_data: LoginRequest) -> LoginResponse:
     try:
         session = requests.Session()
 
-        # Restaurar cookies previas del captcha
-        for cookie_name, cookie_value in login_data.cookies.items():
+        # Purga rápida de sesiones expiradas por TTL
+        now = time.time()
+        try:
+            expired = [sid for sid, data in captcha_store.items() if now - data.get('created_at', now) > CAPTCHA_TTL_SECONDS]
+            for sid in expired:
+                del captcha_store[sid]
+        except Exception:
+            pass
+
+        # Recuperar automáticamente cookies y campos ocultos de la sesión de captcha
+        stored = captcha_store.get(login_data.session_id)
+        if not stored:
+            raise HTTPException(status_code=400, detail="Sesion de captcha no encontrada o expirada. Por favor, solicita un nuevo captcha.")
+
+        # Validar TTL de la sesión de captcha
+        try:
+            created_at = stored.get('created_at', 0)
+            if now - created_at > CAPTCHA_TTL_SECONDS:
+                try:
+                    del captcha_store[login_data.session_id]
+                except Exception:
+                    pass
+                raise HTTPException(status_code=400, detail="La sesión de captcha ha expirado. Por favor, solicita uno nuevo.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+        for cookie_name, cookie_value in stored.get('cookies', {}).items():
             session.cookies.set(cookie_name, cookie_value)
 
         headers = {
@@ -45,7 +73,7 @@ async def login_saes(login_data: LoginRequest) -> LoginResponse:
             'ctl00$leftColumn$LoginUser$CaptchaCodeTextBox': login_data.captcha_code,
             'ctl00$leftColumn$LoginUser$LoginButton': 'Entrar',
         }
-        form_data.update(login_data.hidden_fields)
+        form_data.update(stored.get('hidden_fields', {}))
 
         login_url = "https://www.saes.upiicsa.ipn.mx/default.aspx"
         login_response = session.post(login_url, data=form_data, headers=headers, timeout=15, allow_redirects=True)
