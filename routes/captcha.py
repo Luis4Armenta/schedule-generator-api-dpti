@@ -91,18 +91,10 @@ async def get_captcha() -> CaptchaResponse:
         captcha_data = {
             "session_id": session_id,
             "captcha_image": {
-                "base64": img_base64,
-                "content_type": content_type,
-                "src": img_src
-            },
-            "captcha_div": {
-                "html": str(captcha_div),
-                "class": captcha_div.get('class'),
-                "id": captcha_div.get('id')
+                "base64": img_base64
             },
             "hidden_fields": hidden_fields,
             "cookies": dict(session.cookies),
-            "timestamp": response.headers.get('date'),
             "status": "success"
         }
         
