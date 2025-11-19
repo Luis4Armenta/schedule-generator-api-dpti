@@ -104,11 +104,18 @@ async def get_captcha() -> CaptchaResponse:
             if name:
                 hidden_fields[name] = value
         
-        # Preparar la respuesta
+        # Preparar la respuesta con estructura ampliada para pruebas
         captcha_data = {
             "session_id": session_id,
             "captcha_image": {
-                "base64": img_base64
+                "base64": img_base64,
+                "content_type": content_type,
+                "src": img_src
+            },
+            "captcha_div": {
+                "html": str(captcha_div),
+                "class": captcha_div.get('class', []),
+                "id": captcha_div.get('id')
             },
             "hidden_fields": hidden_fields,
             "cookies": dict(session.cookies),
@@ -129,6 +136,8 @@ async def get_captcha() -> CaptchaResponse:
         
     except requests.RequestException as e:
         raise HTTPException(status_code=503, detail=f"Error al conectar con SAES: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
@@ -154,7 +163,7 @@ async def captcha_status() -> CaptchaStatusResponse:
             return {"status": "online", "message": "Servicio SAES disponible"}
         else:
             return {"status": "unavailable", "message": f"SAES respondió con código {response.status_code}"}
-    except requests.RequestException:
+    except Exception:
         return {"status": "offline", "message": "No se pudo conectar con SAES"}
 
 

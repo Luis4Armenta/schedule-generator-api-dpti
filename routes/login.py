@@ -1,6 +1,6 @@
 import time
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from bs4 import BeautifulSoup
 from typing import Dict
 from routes.captcha import captcha_store, CAPTCHA_TTL_SECONDS
@@ -14,9 +14,14 @@ from schemas.login import (
 
 router = APIRouter()
 
+# Almacén en memoria para sesiones de login (cookies post-auth)
+# Estructura: { session_id: { 'cookies': Dict[str,str], 'created_at': float } }
+login_store = {}
+LOGIN_TTL_SECONDS = 1800  # 30 minutos
+
 
 @router.post("/login", response_model=LoginResponse)
-async def login_saes(login_data: LoginRequest) -> LoginResponse:
+async def login_saes(login_data: LoginRequest, response: Response) -> LoginResponse:
     """
     Realiza el login en el SAES usando la información del captcha y credenciales del usuario,
     luego extrae la información del mapa curricular (carreras, planes de estudio, periodos).
@@ -33,10 +38,18 @@ async def login_saes(login_data: LoginRequest) -> LoginResponse:
         except Exception:
             pass
 
-        # Recuperar automáticamente cookies y campos ocultos de la sesión de captcha
+        # Recuperar automáticamente cookies y campos ocultos de la sesión de captcha.
+        # Si no existe en el almacén, usar lo enviado en la petición (soporte para clientes que guardan ellos mismos).
         stored = captcha_store.get(login_data.session_id)
         if not stored:
-            raise HTTPException(status_code=400, detail="Sesion de captcha no encontrada o expirada. Por favor, solicita un nuevo captcha.")
+            # Fallback con datos proporcionados en la solicitud
+            if not login_data.cookies or not login_data.hidden_fields:
+                raise HTTPException(status_code=400, detail="Sesion de captcha no encontrada o expirada y no se proporcionaron campos ocultos/cookies.")
+            stored = {
+                'cookies': login_data.cookies,
+                'hidden_fields': login_data.hidden_fields,
+                'created_at': time.time()
+            }
 
         # Validar TTL de la sesión de captcha
         try:
@@ -174,11 +187,40 @@ async def login_saes(login_data: LoginRequest) -> LoginResponse:
 
         carrera_info = CarreraInfo(carreras=[CarreraOption(**c) for c in carreras])
 
+        # Guardar cookies de sesión autenticada
+        try:
+            login_store[login_data.session_id] = {
+                'cookies': {c.name: c.value for c in session.cookies},
+                'created_at': time.time()
+            }
+        except Exception:
+            pass
+
+        # Purga básica de sesiones expiradas
+        try:
+            now = time.time()
+            expired_login = [sid for sid, data in login_store.items() if now - data.get('created_at', now) > LOGIN_TTL_SECONDS]
+            for sid in expired_login:
+                del login_store[sid]
+        except Exception:
+            pass
+
+        # Emitir cookie httpOnly con el session_id para posteriores peticiones
+        response.set_cookie(
+            key="saes_session_id",
+            value=login_data.session_id,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=LOGIN_TTL_SECONDS,
+        )
+
         return LoginResponse(
             status="success",
             message="Login exitoso y datos del mapa curricular extraídos correctamente",
             session_id=login_data.session_id,
             carrera_info=carrera_info,
+            cookie_set=True,
         )
 
     except requests.RequestException as e:

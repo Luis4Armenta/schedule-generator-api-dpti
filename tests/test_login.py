@@ -92,6 +92,9 @@ class TestLoginRoutes:
         assert data["status"] == "success"
         assert data["session_id"] == "test-session-id"
         assert "carrera_info" in data
+        assert data.get("cookie_set") is True
+        # Verificar cookie emitida
+        assert "saes_session_id" in response.cookies
         
         # Verify carreras
         assert len(data["carrera_info"]["carreras"]) == 2

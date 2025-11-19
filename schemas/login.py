@@ -1,13 +1,17 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 
 class LoginRequest(BaseModel):
-    """Modelo para la solicitud de login"""
+    """Modelo para la solicitud de login.
+    Se permiten campos opcionales para no depender estrictamente del almacén de captcha.
+    """
     session_id: str
     boleta: str
     password: str
     captcha_code: str
+    hidden_fields: Optional[Dict[str, Any]] = None
+    cookies: Optional[Dict[str, str]] = None
 
 
 class PeriodoOption(BaseModel):
@@ -38,3 +42,5 @@ class LoginResponse(BaseModel):
     message: str
     session_id: str
     carrera_info: Optional[CarreraInfo] = None
+    # Indica si se emitió cookie de sesión
+    cookie_set: Optional[bool] = None
