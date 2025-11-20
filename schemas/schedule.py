@@ -127,7 +127,17 @@ class ScheduleDownloadRequest(BaseModel):
   career_plan: str = Field(description="Código del plan de estudios")
   plan_period: List[int] = Field(description="Lista de períodos (1-10)", min_items=1, max_items=10)
   shift: Optional[str] = Field(default=None, description="Turno específico (opcional)")
-  sequence: Optional[str] = Field(default=None, description="Secuencia específica (opcional)")
+
+  class Config:
+    schema_extra = {
+      "example": {
+        "session_id": "ae3f8c1b2d",
+        "career": "C",
+        "career_plan": "CI-2020",
+        "plan_period": [4],
+        "shift": "M"
+      }
+    }
 
 
 class AvailabilityDownloadRequest(BaseModel):
@@ -145,6 +155,20 @@ class CourseScheduleInfo(BaseModel):
   schedule: List[Dict[str, str]]
   availability: Optional[int] = None
 
+  class Config:
+    schema_extra = {
+      "example": {
+        "sequence": "4CM40",
+        "subject": "ESTRUCTURA DE DATOS",
+        "teacher": "PEREZ LOPEZ JUAN",
+        "schedule": [
+          {"day": "Monday", "start_time": "07:00", "end_time": "08:30"},
+          {"day": "Wednesday", "start_time": "07:00", "end_time": "08:30"}
+        ],
+        "availability": 12
+      }
+    }
+
 
 class ScheduleDownloadResponse(BaseModel):
   """Respuesta de descarga de horarios"""
@@ -152,6 +176,46 @@ class ScheduleDownloadResponse(BaseModel):
   message: str
   courses: List[CourseScheduleInfo]
   total_courses: int
+
+  class Config:
+    schema_extra = {
+      "example": {
+        "status": "success",
+        "message": "Se descargaron 3 cursos con su disponibilidad",
+        "total_courses": 3,
+        "courses": [
+          {
+            "sequence": "4CM40",
+            "subject": "ESTRUCTURA DE DATOS",
+            "teacher": "PEREZ LOPEZ JUAN",
+            "schedule": [
+              {"day": "Monday", "start_time": "07:00", "end_time": "08:30"},
+              {"day": "Wednesday", "start_time": "07:00", "end_time": "08:30"}
+            ],
+            "availability": 12
+          },
+          {
+            "sequence": "4CM40",
+            "subject": "MATEMATICAS DISCRETAS",
+            "teacher": "GOMEZ RAMIREZ ANA",
+            "schedule": [
+              {"day": "Tuesday", "start_time": "09:00", "end_time": "10:30"},
+              {"day": "Thursday", "start_time": "09:00", "end_time": "10:30"}
+            ],
+            "availability": 5
+          },
+          {
+            "sequence": "4CM40",
+            "subject": "INGLES IV",
+            "teacher": "LOPEZ DIAZ MARIA",
+            "schedule": [
+              {"day": "Friday", "start_time": "11:00", "end_time": "12:30"}
+            ],
+            "availability": 8
+          }
+        ]
+      }
+    }
 
 
 class AvailabilityDownloadResponse(BaseModel):

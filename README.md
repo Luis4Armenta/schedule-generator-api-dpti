@@ -44,3 +44,21 @@ Necesitarás tener Docker compose instalado en tu computadora.\
 `$ docker-compose up`
 
 5. Listo. Puedes acceder a la documentación automática de la API mediante la ruta `http://localhost:3000/docs'.
+
+## Sesiones y errores 401
+
+La API mantiene en memoria (dentro del proceso Gunicorn) estructuras simples (`login_store`, `captcha_store`) para asociar un `session_id` con la cookie autenticada del SAES y el estado del captcha. Si el proceso se reinicia (por:
+
+- Reconstrucción/arranque de contenedor
+- Cambio de código con reload
+- Timeout o crash del worker durante scraping Selenium
+
+entonces estas estructuras se vacían y cualquier petición subsecuente que use un `session_id` previo responderá 401 (no autenticado). Solución rápida: repetir el flujo de login para obtener un nuevo `session_id` antes de llamar a `/schedules/download`.
+
+Para evitar pérdida de sesión podrías:
+
+- Persistir sesiones en Redis/Mongo en lugar de memoria.
+- Aumentar `timeout` de Gunicorn (ya configurado a 180s en `gunicorn.conf.py`) para reducir reinicios por tareas largas.
+- Monitorear logs; si no aparecen líneas `[Schedules]` y recibes 401, probablemente el worker se reinició.
+
+Importante: El scraping puede tardar más de 60s en periodos de alta carga del SAES; no reduzcas agresivamente el timeout.

@@ -11,3 +11,8 @@ bind = "0.0.0.0:3000"
 worker_class = "uvicorn.workers.UvicornWorker"
 # Usar solo 1 worker para evitar problemas de memoria compartida con captcha_store y login_store
 workers = 1
+
+# Aumentamos el timeout para permitir que Selenium complete scraping de horarios
+# (Firefox + geckodriver en modo headless puede tardar >60s cuando el sitio está lento)
+timeout = 180
+graceful_timeout = 210

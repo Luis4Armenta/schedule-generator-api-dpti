@@ -7,11 +7,11 @@ WORKDIR /app
 # Instalamos dependencias necesarias para Firefox (navegación headless)
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends firefox-esr ca-certificates wget tar \
-	&& wget -q https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux64.tar.gz \
-	&& tar -xzf geckodriver-v0.35.0-linux64.tar.gz \
+	&& wget -q https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-linux64.tar.gz \
+	&& tar -xzf geckodriver-v0.36.0-linux64.tar.gz \
 	&& mv geckodriver /usr/local/bin/ \
 	&& chmod +x /usr/local/bin/geckodriver \
-	&& rm geckodriver-v0.35.0-linux64.tar.gz \
+	&& rm geckodriver-v0.36.0-linux64.tar.gz \
 	&& rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

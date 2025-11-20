@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 import time
 from typing import List
 
@@ -87,9 +88,15 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
   - **sequence**: Secuencia especifica (opcional)
   '''
   try:
+    sys.stderr.write(f"[Endpoint] /schedules/download session_id={request.session_id}\n")
+    sys.stderr.flush()
+    sys.stderr.write(f"[Endpoint] login_store keys actuales={list(login_store.keys())}\n")
+    sys.stderr.flush()
     # Verificar que existe la sesion de login
     stored = login_store.get(request.session_id)
     if not stored:
+      sys.stderr.write(f"[Endpoint] Sesion {request.session_id} no encontrada en login_store\n")
+      sys.stderr.flush()
       raise HTTPException(
         status_code=401,
         detail="Sesion no encontrada o expirada. Por favor, realiza login nuevamente."
@@ -99,6 +106,8 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
     now = time.time()
     created_at = stored.get('created_at', 0)
     if now - created_at > LOGIN_TTL_SECONDS:
+      sys.stderr.write(f"[Endpoint] Sesion {request.session_id} expirada TTL={LOGIN_TTL_SECONDS}s\n")
+      sys.stderr.flush()
       try:
         del login_store[request.session_id]
       except Exception:
@@ -114,6 +123,8 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
     token = cookies.get('.ASPXFORMSAUTH')
     
     if not session_id or not token:
+      sys.stderr.write(f"[Endpoint] Cookies faltantes session_id={session_id} token={token}\n")
+      sys.stderr.flush()
       raise HTTPException(
         status_code=401,
         detail="Cookies de autenticacion no encontradas. Por favor, realiza login nuevamente."
@@ -128,14 +139,18 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
       career_plan=request.career_plan,
       plan_periods=request.plan_period,
       shift=request.shift,
-      sequence=request.sequence
+      sequence=None
     )
+    sys.stderr.write(f"[Endpoint] Cursos descargados={len(courses)}\n")
+    sys.stderr.flush()
     
     # Descargar disponibilidad
     availabilities = scraper.download_availability(
       career=request.career,
       career_plan=request.career_plan
     )
+    sys.stderr.write(f"[Endpoint] Disponibilidades descargadas={len(availabilities)}\n")
+    sys.stderr.flush()
     
     # Combinar horarios con disponibilidad
     availability_map = {
