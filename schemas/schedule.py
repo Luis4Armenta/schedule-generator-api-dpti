@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 from enum import Enum
 import datetime
 
@@ -118,3 +118,45 @@ class CoursesRequest(BaseModel):
           
       ]
     }
+
+
+class ScheduleDownloadRequest(BaseModel):
+  """Modelo para solicitar la descarga de horarios desde SAES"""
+  session_id: str = Field(description="ID de sesión obtenido del login exitoso")
+  career: str = Field(description="Código de carrera")
+  career_plan: str = Field(description="Código del plan de estudios")
+  plan_period: List[int] = Field(description="Lista de períodos (1-10)", min_items=1, max_items=10)
+  shift: Optional[str] = Field(default=None, description="Turno específico (opcional)")
+  sequence: Optional[str] = Field(default=None, description="Secuencia específica (opcional)")
+
+
+class AvailabilityDownloadRequest(BaseModel):
+  """Modelo para solicitar la descarga de disponibilidad desde SAES"""
+  session_id: str = Field(description="ID de sesión obtenido del login exitoso")
+  career: str = Field(description="Código de carrera")
+  career_plan: str = Field(description="Código del plan de estudios")
+
+
+class CourseScheduleInfo(BaseModel):
+  """Información de un curso descargado"""
+  sequence: str
+  subject: str
+  teacher: str
+  schedule: List[Dict[str, str]]
+  availability: Optional[int] = None
+
+
+class ScheduleDownloadResponse(BaseModel):
+  """Respuesta de descarga de horarios"""
+  status: str
+  message: str
+  courses: List[CourseScheduleInfo]
+  total_courses: int
+
+
+class AvailabilityDownloadResponse(BaseModel):
+  """Respuesta de descarga de disponibilidad"""
+  status: str
+  message: str
+  availabilities: List[Dict[str, Any]]
+  total_updated: int
