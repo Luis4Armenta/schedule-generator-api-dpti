@@ -1,19 +1,13 @@
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
 
 class CaptchaImage(BaseModel):
     """Modelo para la imagen del captcha"""
     base64: str
-    content_type: Optional[str] = None
-    src: Optional[str] = None
 
 class CaptchaResponse(BaseModel):
     """Modelo para la respuesta completa del captcha"""
     session_id: str
     captcha_image: CaptchaImage
-    captcha_div: Optional[Dict[str, Any]] = None
-    hidden_fields: Dict[str, str]
-    cookies: Dict[str, str]
     status: str
 
 class CaptchaStatusResponse(BaseModel):

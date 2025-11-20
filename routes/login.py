@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Response
 from bs4 import BeautifulSoup
 from typing import Dict
 from routes.captcha import captcha_store, CAPTCHA_TTL_SECONDS
+from utils.text import extract_hidden_fields
 
 from schemas.login import (
     LoginRequest,
@@ -39,17 +40,9 @@ async def login_saes(login_data: LoginRequest, response: Response) -> LoginRespo
             pass
 
         # Recuperar automáticamente cookies y campos ocultos de la sesión de captcha.
-        # Si no existe en el almacén, usar lo enviado en la petición (soporte para clientes que guardan ellos mismos).
         stored = captcha_store.get(login_data.session_id)
         if not stored:
-            # Fallback con datos proporcionados en la solicitud
-            if not login_data.cookies or not login_data.hidden_fields:
-                raise HTTPException(status_code=400, detail="Sesion de captcha no encontrada o expirada y no se proporcionaron campos ocultos/cookies.")
-            stored = {
-                'cookies': login_data.cookies,
-                'hidden_fields': login_data.hidden_fields,
-                'created_at': time.time()
-            }
+            raise HTTPException(status_code=400, detail="Sesión de captcha no encontrada o expirada. Por favor, solicita un nuevo captcha.")
 
         # Validar TTL de la sesión de captcha
         try:
@@ -115,15 +108,6 @@ async def login_saes(login_data: LoginRequest, response: Response) -> LoginRespo
         if not select_carrera:
             raise HTTPException(status_code=404, detail="No se encontró el select de carreras")
 
-        def extract_hidden_fields(soup_doc: BeautifulSoup) -> Dict[str, str]:
-            fields: Dict[str, str] = {}
-            for input_tag in soup_doc.find_all('input', {'type': 'hidden'}):
-                name = input_tag.get('name')
-                value = input_tag.get('value', '')
-                if name:
-                    fields[name] = value
-            return fields
-
         current_hidden = extract_hidden_fields(soup)
         carrera_select_name = 'ctl00$mainCopy$Filtro$cboCarrera'
         plan_select_name = 'ctl00$mainCopy$Filtro$cboPlanEstud'
@@ -187,10 +171,16 @@ async def login_saes(login_data: LoginRequest, response: Response) -> LoginRespo
 
         carrera_info = CarreraInfo(carreras=[CarreraOption(**c) for c in carreras])
 
+        # Extraer las cookies importantes de autenticación
+        auth_cookies = {}
+        for cookie in session.cookies:
+            if cookie.name in ['ASP.NET_SessionId', '.ASPXFORMSAUTH']:
+                auth_cookies[cookie.name] = cookie.value
+        
         # Guardar cookies de sesión autenticada
         try:
             login_store[login_data.session_id] = {
-                'cookies': {c.name: c.value for c in session.cookies},
+                'cookies': auth_cookies,
                 'created_at': time.time()
             }
         except Exception:
@@ -220,7 +210,7 @@ async def login_saes(login_data: LoginRequest, response: Response) -> LoginRespo
             message="Login exitoso y datos del mapa curricular extraídos correctamente",
             session_id=login_data.session_id,
             carrera_info=carrera_info,
-            cookie_set=True,
+            cookies=auth_cookies,
         )
 
     except requests.RequestException as e:

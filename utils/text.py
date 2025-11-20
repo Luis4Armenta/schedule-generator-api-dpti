@@ -1,6 +1,7 @@
 import re
 from unidecode import unidecode
-from typing import List
+from typing import List, Dict
+from bs4 import BeautifulSoup
 
 def clean_name(name: str) -> str:
   # Convertir caracteres especiales a su equivalente sin acentos
@@ -28,3 +29,21 @@ def get_url_for_teacher(teacher: str) -> str:
   
   url = f'https://foroupiicsa.net/diccionario/buscar/{parsed_name}'
   return url
+
+def extract_hidden_fields(soup_doc: BeautifulSoup) -> Dict[str, str]:
+  """
+  Extrae todos los campos ocultos de un documento HTML parseado con BeautifulSoup.
+  
+  Args:
+    soup_doc: Documento BeautifulSoup parseado
+    
+  Returns:
+    Diccionario con los campos ocultos (name: value)
+  """
+  fields: Dict[str, str] = {}
+  for input_tag in soup_doc.find_all('input', {'type': 'hidden'}):
+    name = input_tag.get('name')
+    value = input_tag.get('value', '')
+    if name:
+      fields[name] = value
+  return fields

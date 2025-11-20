@@ -7,6 +7,7 @@ import json
 import uuid
 from typing import Dict, Any
 from schemas.captcha import CaptchaResponse, CaptchaStatusResponse
+from utils.text import extract_hidden_fields
 
 # Almacén en memoria para asociar session_id con campos ocultos y cookies
 # Estructura: { session_id: { 'hidden_fields': Dict[str,str], 'cookies': Dict[str,str] } }
@@ -97,30 +98,8 @@ async def get_captcha() -> CaptchaResponse:
         session_id = str(uuid.uuid4())
         
         # Buscar campos ocultos importantes (como ViewState, EventValidation, etc.)
-        hidden_fields = {}
-        for input_tag in soup.find_all('input', {'type': 'hidden'}):
-            name = input_tag.get('name')
-            value = input_tag.get('value', '')
-            if name:
-                hidden_fields[name] = value
+        hidden_fields = extract_hidden_fields(soup)
         
-        # Preparar la respuesta con estructura ampliada para pruebas
-        captcha_data = {
-            "session_id": session_id,
-            "captcha_image": {
-                "base64": img_base64,
-                "content_type": content_type,
-                "src": img_src
-            },
-            "captcha_div": {
-                "html": str(captcha_div),
-                "class": captcha_div.get('class', []),
-                "id": captcha_div.get('id')
-            },
-            "hidden_fields": hidden_fields,
-            "cookies": dict(session.cookies),
-            "status": "success"
-        }
         # Guardar en memoria para que el endpoint de login lo recupere automáticamente
         try:
             captcha_store[session_id] = {
@@ -131,6 +110,15 @@ async def get_captcha() -> CaptchaResponse:
         except Exception:
             # En caso de algún problema con el almacenamiento en memoria, continuamos sin bloquear la respuesta
             pass
+        
+        # Preparar la respuesta solo con los datos necesarios
+        captcha_data = {
+            "session_id": session_id,
+            "captcha_image": {
+                "base64": img_base64
+            },
+            "status": "success"
+        }
         
         return captcha_data
         

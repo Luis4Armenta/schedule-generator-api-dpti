@@ -9,4 +9,5 @@ log_file = "-"
 bind = "0.0.0.0:3000"
 
 worker_class = "uvicorn.workers.UvicornWorker"
-workers = (multiprocessing.cpu_count() * 2) + 1
+# Usar solo 1 worker para evitar problemas de memoria compartida con captcha_store y login_store
+workers = 1
