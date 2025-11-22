@@ -78,6 +78,7 @@ async def generate_schedules(request: ScheduleGeneratorRequest) -> List[Schedule
 async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> ScheduleDownloadResponse:
   '''
   Descarga horarios directamente desde SAES usando las cookies de autenticacion.
+  Implementa cache semanal: descarga completa cada 7 días, solo disponibilidad entre descargas.
   Requiere un login exitoso previo.
   
   - **session_id**: ID de sesion obtenido del login
@@ -85,7 +86,7 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
   - **career_plan**: Codigo del plan de estudios
   - **plan_period**: Lista de periodos a descargar (1-10)
   - **shift**: Turno especifico (opcional)
-  - **sequence**: Secuencia especifica (opcional)
+  - **force_full**: Forzar descarga completa ignorando cache (opcional)
   '''
   try:
     sys.stderr.write(f"[Endpoint] /schedules/download session_id={request.session_id}\n")
@@ -130,46 +131,161 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
         detail="Cookies de autenticacion no encontradas. Por favor, realiza login nuevamente."
       )
     
+    # Verificar cache: ¿qué períodos necesitan descarga completa?
+    course_service = CourseService(router.courses)
+    force_full = getattr(request, 'force_full', False)
+    
+    if force_full:
+      # Forzar descarga completa de todos los períodos
+      missing_periods = request.plan_period
+      sys.stderr.write(f"[Endpoint] force_full=True, descargando todos los períodos: {missing_periods}\n")
+      sys.stderr.flush()
+    else:
+      # Verificar qué períodos faltan o están desactualizados
+      missing_periods = course_service.check_missing_periods(request.career, request.career_plan, request.plan_period)
+      sys.stderr.write(f"[Endpoint] Períodos solicitados: {request.plan_period}\n")
+      sys.stderr.write(f"[Endpoint] Períodos que necesitan descarga: {missing_periods}\n")
+      sys.stderr.flush()
+    
+    current_time = time.time()
+    needs_full_download = len(missing_periods) > 0
+    
     # Inicializar scraper
     scraper = SAESScraperService(session_id=session_id, token=token)
     
-    # Descargar horarios
-    courses = scraper.download_schedules(
-      career=request.career,
-      career_plan=request.career_plan,
-      plan_periods=request.plan_period,
-      shift=request.shift,
-      sequence=None
-    )
-    sys.stderr.write(f"[Endpoint] Cursos descargados={len(courses)}\n")
-    sys.stderr.flush()
-    
-    # Descargar disponibilidad
-    availabilities = scraper.download_availability(
-      career=request.career,
-      career_plan=request.career_plan
-    )
-    sys.stderr.write(f"[Endpoint] Disponibilidades descargadas={len(availabilities)}\n")
-    sys.stderr.flush()
-    
-    # Combinar horarios con disponibilidad
-    availability_map = {
-      f"{a['sequence']}_{a['subject']}": a['availability']
-      for a in availabilities
-    }
-    
-    course_info_list = []
-    for course in courses:
-      key = f"{course['sequence']}_{course['subject']}"
-      course['availability'] = availability_map.get(key)
-      course_info_list.append(CourseScheduleInfo(**course))
-    
-    return ScheduleDownloadResponse(
-      status="success",
-      message=f"Se descargaron {len(course_info_list)} cursos con su disponibilidad",
-      courses=course_info_list,
-      total_courses=len(course_info_list)
-    )
+    if needs_full_download:
+      sys.stderr.write(f"[Endpoint] Descarga completa de períodos: {missing_periods}\n")
+      sys.stderr.flush()
+      
+      # Descargar horarios solo de períodos faltantes
+      courses = scraper.download_schedules(
+        career=request.career,
+        career_plan=request.career_plan,
+        plan_periods=missing_periods,
+        shift=request.shift,
+        sequence=None
+      )
+      sys.stderr.write(f"[Endpoint] Cursos descargados={len(courses)}\n")
+      sys.stderr.flush()
+      
+      # Descargar disponibilidad
+      availabilities = scraper.download_availability(
+        career=request.career,
+        career_plan=request.career_plan
+      )
+      sys.stderr.write(f"[Endpoint] Disponibilidades descargadas={len(availabilities)}\n")
+      sys.stderr.flush()
+      
+      # Combinar horarios con disponibilidad
+      availability_map = {
+        f"{a['sequence']}_{a['subject']}": a['availability']
+        for a in availabilities
+      }
+      
+      course_info_list = []
+      courses_for_db = []
+      
+      from courses.domain.model.course import Course
+      
+      for course in courses:
+        key = f"{course['sequence']}_{course['subject']}"
+        availability = availability_map.get(key, 0)
+        
+        # Para respuesta HTTP (schema simplificado)
+        course_info = CourseScheduleInfo(
+          sequence=course['sequence'],
+          subject=course['subject'],
+          teacher=course['teacher'],
+          schedule=course['schedule'],
+          availability=availability
+        )
+        course_info_list.append(course_info)
+        
+        # Para MongoDB (modelo completo)
+        course_obj = Course(
+          sequence=course['sequence'],
+          subject=course['subject'],
+          teacher=course['teacher'],
+          schedule=course['schedule'],
+          plan=course['plan'],
+          level=course['level'],
+          career=course['career'],
+          shift=course['shift'],
+          semester=course['semester'],
+          required_credits=course.get('required_credits', 0.0),
+          teacher_positive_score=course.get('teacher_positive_score', 0.0),
+          course_availability=availability
+        )
+        courses_for_db.append(course_obj)
+      
+      # Guardar en MongoDB
+      saved_count = course_service.upload_courses(courses_for_db)
+      
+      # Registrar períodos descargados con timestamp
+      course_service.set_downloaded_periods(request.career, request.career_plan, missing_periods, current_time)
+      
+      sys.stderr.write(f"[Endpoint] Guardados {saved_count} cursos en MongoDB\n")
+      sys.stderr.flush()
+      
+      return ScheduleDownloadResponse(
+        status="success",
+        message=f"Descarga completa: {saved_count} cursos guardados en DB",
+        courses=course_info_list,
+        total_courses=len(course_info_list)
+      )
+    else:
+      sys.stderr.write(f"[Endpoint] Todos los períodos {request.plan_period} ya están descargados y actualizados\n")
+      sys.stderr.write(f"[Endpoint] Solo actualización de disponibilidad\n")
+      sys.stderr.flush()
+      
+      # Solo descargar disponibilidad
+      availabilities = scraper.download_availability(
+        career=request.career,
+        career_plan=request.career_plan
+      )
+      sys.stderr.write(f"[Endpoint] Disponibilidades descargadas={len(availabilities)}\n")
+      sys.stderr.flush()
+      
+      # Actualizar solo disponibilidad en MongoDB
+      updated_count = 0
+      for avail in availabilities:
+        if course_service.update_availability(avail['sequence'], avail['subject'], avail['availability']):
+          updated_count += 1
+      
+      sys.stderr.write(f"[Endpoint] Actualizada disponibilidad de {updated_count} cursos\n")
+      sys.stderr.flush()
+      
+      # Obtener cursos de MongoDB para retornar
+      courses_from_db = course_service.course_repository.get_courses(
+        career=request.career,
+        levels=['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        semesters=[str(i) for i in range(1, 13)],
+        shifts=[request.shift] if request.shift else ['M', 'V']
+      )
+      
+      course_info_list = [
+        CourseScheduleInfo(
+          sequence=c.sequence,
+          subject=c.subject,
+          teacher=c.teacher,
+          schedule=c.schedule,
+          availability=c.course_availability,
+          semester=c.semester,
+          career=c.career,
+          level=c.level,
+          plan=c.plan,
+          shift=c.shift,
+          required_credits=c.required_credits,
+          teacher_positive_score=c.teacher_positive_score
+        ) for c in courses_from_db if c.plan == request.career_plan
+      ]
+      
+      return ScheduleDownloadResponse(
+        status="success",
+        message=f"Actualización de disponibilidad: {updated_count} cursos actualizados",
+        courses=course_info_list,
+        total_courses=len(course_info_list)
+      )
     
   except HTTPException:
     raise

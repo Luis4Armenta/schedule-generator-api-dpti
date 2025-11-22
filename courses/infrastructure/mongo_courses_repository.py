@@ -1,4 +1,5 @@
 import os
+import time
 
 from pymongo import MongoClient
 from typing import TypedDict, List
@@ -54,6 +55,103 @@ class MongoCourseRepository(CourseRepository):
     return courses
 
   
+  def upsert_course(self, course: Course) -> bool:
+    """Inserta o actualiza un curso usando sequence+subject como clave única"""
+    try:
+      filter_query = {
+        'sequence': course.sequence,
+        'subject': course.subject
+      }
+      
+      course_dict = {
+        'semester': course.semester,
+        'career': course.career,
+        'level': course.level,
+        'plan': course.plan,
+        'shift': course.shift,
+        'sequence': course.sequence,
+        'subject': course.subject,
+        'teacher': course.teacher,
+        'schedule': course.schedule,
+        'course_availability': course.course_availability,
+        'required_credits': course.required_credits,
+        'teacher_positive_score': course.teacher_positive_score,
+      }
+      
+      self.course_collection.update_one(
+        filter_query,
+        {'$set': course_dict},
+        upsert=True
+      )
+      return True
+    except Exception as e:
+      print(f"Error upserting course: {e}")
+      return False
+
+  def insert_courses(self, courses: List[Course]) -> int:
+    """Inserta múltiples cursos usando upsert"""
+    count = 0
+    for course in courses:
+      if self.upsert_course(course):
+        count += 1
+    return count
+
+  def update_course_availability(self, sequence: str, subject: str, availability: int) -> bool:
+    """Actualiza solo la disponibilidad de un curso existente"""
+    try:
+      result = self.course_collection.update_one(
+        {'sequence': sequence, 'subject': subject},
+        {'$set': {'course_availability': availability}}
+      )
+      return result.modified_count > 0
+    except Exception as e:
+      print(f"Error updating availability: {e}")
+      return False
+
+  def get_downloaded_periods(self, career: str, plan: str) -> dict:
+    """Obtiene los períodos descargados con sus timestamps para carrera+plan"""
+    metadata = self.database['course_metadata'].find_one(
+      {'career': career, 'plan': plan}
+    )
+    if not metadata:
+      return {}
+    return metadata.get('periods', {})
+
+  def set_downloaded_periods(self, career: str, plan: str, periods: List[int], timestamp: float) -> None:
+    """Registra los períodos descargados con timestamp"""
+    # Obtener períodos existentes
+    existing = self.get_downloaded_periods(career, plan)
+    
+    # Actualizar con los nuevos períodos
+    for period in periods:
+      existing[str(period)] = timestamp
+    
+    self.database['course_metadata'].update_one(
+      {'career': career, 'plan': plan},
+      {'$set': {'periods': existing}},
+      upsert=True
+    )
+
+  def check_missing_periods(self, career: str, plan: str, requested_periods: List[int]) -> List[int]:
+    """Verifica qué períodos solicitados NO están descargados o están desactualizados (>7 días)"""
+    downloaded = self.get_downloaded_periods(career, plan)
+    current_time = time.time()
+    week_in_seconds = 7 * 24 * 60 * 60
+    
+    missing = []
+    for period in requested_periods:
+      period_str = str(period)
+      if period_str not in downloaded:
+        # Período nunca descargado
+        missing.append(period)
+      else:
+        # Verificar si está desactualizado
+        last_update = downloaded[period_str]
+        if (current_time - last_update) > week_in_seconds:
+          missing.append(period)
+    
+    return missing
+
   def disconnect(self) -> None:
     self.mongo_client.close()
     

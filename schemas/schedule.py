@@ -127,6 +127,7 @@ class ScheduleDownloadRequest(BaseModel):
   career_plan: str = Field(description="Código del plan de estudios")
   plan_period: List[int] = Field(description="Lista de períodos (1-10)", min_items=1, max_items=10)
   shift: Optional[str] = Field(default=None, description="Turno específico (opcional)")
+  force_full: Optional[bool] = Field(default=False, description="Forzar descarga completa ignorando cache (opcional)")
 
   class Config:
     schema_extra = {
@@ -135,7 +136,8 @@ class ScheduleDownloadRequest(BaseModel):
         "career": "C",
         "career_plan": "CI-2020",
         "plan_period": [4],
-        "shift": "M"
+        "shift": "M",
+        "force_full": False
       }
     }
 
