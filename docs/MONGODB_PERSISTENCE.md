@@ -1,7 +1,38 @@
 # Estrategia de Persistencia MongoDB
 
+> **Nota de Arquitectura**: Este documento describe el adaptador de persistencia `MongoCourseRepository` que implementa el puerto `CourseRepository`. Ver [HEXAGONAL_ARCHITECTURE.md](HEXAGONAL_ARCHITECTURE.md) para contexto arquitectónico.
+
 ## Resumen
 Se implementó un sistema de persistencia en MongoDB con **cache granular por período** para optimizar las descargas desde SAES. Cada período (semestre) se rastrea individualmente con su timestamp.
+
+## Contexto en Arquitectura Hexagonal
+
+```
+┌────────────────────────────────────────┐
+│   CourseService (Aplicación)           │
+│   - upload_courses()                   │
+│   - check_missing_periods()            │
+└──────────────┬─────────────────────────┘
+               │ usa
+               ↓
+┌────────────────────────────────────────┐
+│   CourseRepository (Puerto/Interfaz)   │  🔷 Dominio
+│   - insert_courses()                   │
+│   - get_downloaded_periods()           │
+└──────────────┬─────────────────────────┘
+               │ implementado por
+               ↓
+┌────────────────────────────────────────┐
+│   MongoCourseRepository (Adaptador)    │  🔧 Infraestructura
+│   - Conexión MongoDB                   │
+│   - Operaciones CRUD con pymongo       │
+└────────────────────────────────────────┘
+```
+
+Este diseño permite:
+- Cambiar MongoDB por PostgreSQL sin tocar lógica de negocio
+- Usar mocks en tests unitarios
+- Mantener el dominio independiente de tecnologías
 
 ## Comportamiento
 

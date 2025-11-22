@@ -6,7 +6,20 @@ from courses.domain.ports.courses_repository import CourseRepository
 from courses.application.course_filter.filter import CourseFilter, CourseChecker
 from courses.application.course_filter.checkers import SubjectChecker, TeacherChecker, TimeChecker, AvailabilityChecker
 
+
 class CourseService:
+  """Servicio de Aplicación para Cursos - Arquitectura Hexagonal
+  
+  Orquesta casos de uso relacionados con cursos:
+  - Filtrado de cursos según criterios
+  - Obtención de cursos desde repositorio
+  - Persistencia de cursos descargados
+  - Gestión de cache por período
+  
+  Depende de CourseRepository (puerto), no de implementación específica.
+  Esto permite testing con mocks y cambio de tecnología de BD sin modificar esta clase.
+  """
+  
   def __init__(
       self,
       course_repository: CourseRepository

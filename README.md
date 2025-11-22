@@ -1,15 +1,87 @@
 # Generador de horarios UPIICSA API
 
-Se trata de una API desarrollada en FastAPI que emplea web scraping para extraer horarios del SAES (Secuencias formadas por diferentes unidades de aprendizaje, mismas que tienen un profesor asignado, con diferentes sesiones a la semana) y comentarios sobre los profesores que las imparten. El generador de horarios utiliza estos datos extraídos de la web para generar todos los posibles horarios mediante un algoritmo de backtracking y puntuarlos de acuerdo al agrado que los alumnos han manifestado en comentarios sobre los profesores que integran cada uno de los horarios.
+API desarrollada en **FastAPI** que emplea web scraping para extraer horarios del SAES (Sistema de Administración Escolar) y genera combinaciones óptimas de horarios basándose en análisis de sentimiento de comentarios sobre profesores.
+
+## 📚 Documentación
+
+Toda la documentación técnica está organizada en la carpeta [`docs/`](docs/):
+
+### Arquitectura
+- **[Diagrama de Arquitectura Visual](docs/ARCHITECTURE_DIAGRAM.md)**: Diagramas visuales y flujos completos del sistema
+- **[Arquitectura Hexagonal](docs/HEXAGONAL_ARCHITECTURE.md)**: Descripción completa del patrón de puertos y adaptadores
+
+### Implementación
+- **[Persistencia MongoDB](docs/MONGODB_PERSISTENCE.md)**: Estrategia de cache granular por período
+- **[Diagrama de Flujo](docs/FLOW_DIAGRAM.md)**: Flujos visuales del sistema de descarga
+- **[Resumen de Implementación](docs/IMPLEMENTATION_SUMMARY.md)**: Cambios y decisiones técnicas
+
+### Integración
+- **[Uso de CAPTCHA](docs/CAPTCHA_USAGE.md)**: Manejo de autenticación con SAES
+
+## 🏗️ Arquitectura
+
+Este proyecto sigue el patrón de **Arquitectura Hexagonal** (Puertos y Adaptadores):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    🌐 API REST (FastAPI)                    │
+│                   Adaptadores de Entrada                    │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│              🔶 Capa de Aplicación (Use Cases)              │
+│         CourseService, ScheduleService                      │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│               🔷 Dominio (Lógica de Negocio)                │
+│    Course, Schedule + CourseRepository (puerto)             │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│          🔧 Infraestructura (Adaptadores de Salida)         │
+│     MongoCourseRepository, SAESScraperService               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Ver [docs/HEXAGONAL_ARCHITECTURE.md](docs/HEXAGONAL_ARCHITECTURE.md) para detalles completos.
 
 ## Características
 
-- Extrae horarios de clase de documentos HTML exportados del SAES.
-- Genera todas las posibles combinaciones de materias de acuerdo a los parámetros dados (Hora de entrada, hora de salida, límite de créditos, materias obligatorias, exclusión de profesores, etc).
-- Extrae comentarios automáticamente del diccionario de maestros.
-- Realiza análisis de sentimiento sobre comentarios de profesores.
-- Asigna una puntuación positiva a los profesores según los comentarios que en el diccionario de maestros se hayan.
-- Ordena los horarios generados según la puntuación positiva.
+- ✅ Extrae horarios de clase desde SAES usando Selenium + Firefox headless
+- ✅ Cache inteligente por período (7 días) para optimizar descargas
+- ✅ Genera todas las combinaciones válidas de horarios con algoritmo de backtracking
+- ✅ Análisis de sentimiento sobre comentarios de profesores
+- ✅ Puntuación y ordenamiento de horarios según preferencias
+- ✅ Persistencia en MongoDB con estrategia de actualización granular
+- ✅ Arquitectura hexagonal para mantenibilidad y testing
+
+## 📂 Estructura del Proyecto
+
+```
+schedule-generator-api/
+├── 📄 README.md                    # Este archivo
+├── 📁 docs/                        # 📚 Documentación técnica completa
+│   ├── README.md                   # Índice de documentación
+│   ├── HEXAGONAL_ARCHITECTURE.md  # Arquitectura del sistema
+│   ├── ARCHITECTURE_DIAGRAM.md    # Diagramas visuales
+│   ├── MONGODB_PERSISTENCE.md     # Estrategia de persistencia
+│   ├── FLOW_DIAGRAM.md            # Flujos de descarga
+│   ├── CAPTCHA_USAGE.md           # Autenticación SAES
+│   └── IMPLEMENTATION_SUMMARY.md  # Historial de cambios
+├── 📁 courses/                     # Módulo de cursos
+│   ├── domain/                     # Lógica de negocio
+│   ├── application/                # Casos de uso
+│   └── infrastructure/             # Adaptadores (MongoDB)
+├── 📁 schedules/                   # Módulo de horarios
+│   ├── domain/                     # Entidades y puertos
+│   ├── application/                # Servicios y scraper
+│   └── infrastructure/             # (Futuros adaptadores)
+├── 📁 routes/                      # Endpoints REST API
+├── 📁 schemas/                     # DTOs y validación
+├── 📁 tests/                       # Tests unitarios
+└── 🐳 docker-compose.yml           # Configuración Docker
+```
 
 ## Instalación
 ### Python y PIP

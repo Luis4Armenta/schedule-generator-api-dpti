@@ -22,6 +22,15 @@ def singleton(cls):
 
 @singleton
 class MongoCourseRepository(CourseRepository):
+  """Adaptador de persistencia para MongoDB - Arquitectura Hexagonal
+  
+  Implementa el puerto CourseRepository definido en el dominio.
+  Este adaptador encapsula todos los detalles de MongoDB (conexión, queries, índices)
+  permitiendo que la lógica de negocio permanezca agnóstica de la tecnología de BD.
+  
+  Patrón: Singleton para reutilizar la conexión MongoDB.
+  """
+  
   def connect(self) -> None:
     self.mongo_client = MongoClient(os.environ['MONGODB_CONNECTION_STRING'])
     self.database = self.mongo_client[os.environ['MONGODB_DATABASE']]

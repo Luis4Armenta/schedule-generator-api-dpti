@@ -10,9 +10,15 @@ from selenium.common.exceptions import NoSuchElementException, WebDriverExceptio
 from bs4 import BeautifulSoup
 from lxml import etree
 
+from schedules.domain.ports.schedule_scraper_port import ScheduleScraperPort
 
-class SAESScraperService:
-    """Servicio para scraping de horarios y disponibilidad del SAES usando Selenium"""
+
+class SAESScraperService(ScheduleScraperPort):
+    """Adaptador de scraping para SAES usando Selenium - Arquitectura Hexagonal
+    
+    Implementa ScheduleScraperPort para obtener horarios desde el sistema SAES de UPIICSA.
+    Este es un adaptador externo (infrastructure) que conecta con un sistema legacy.
+    """
     
     def __init__(self, session_id: str, token: str, domain: str = "www.saes.upiicsa.ipn.mx"):
         self.session_id = session_id
