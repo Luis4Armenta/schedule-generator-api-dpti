@@ -8,6 +8,9 @@ class LoginRequest(BaseModel):
     boleta: str
     password: str
     captcha_code: str
+    # Campos opcionales que el cliente puede enviar si los obtuvo del endpoint /captcha
+    hidden_fields: Optional[Dict[str, str]] = None
+    cookies: Optional[Dict[str, str]] = None
 
 
 class PeriodoOption(BaseModel):
@@ -40,3 +43,5 @@ class LoginResponse(BaseModel):
     carrera_info: Optional[CarreraInfo] = None
     # Cookies de autenticación (ASP.NET_SessionId y .ASPXFORMSAUTH)
     cookies: Optional[Dict[str, str]] = None
+    # Indica si la cookie httpOnly fue emitida
+    cookie_set: Optional[bool] = False

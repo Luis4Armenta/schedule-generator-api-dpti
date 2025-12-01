@@ -111,12 +111,21 @@ async def get_captcha() -> CaptchaResponse:
             # En caso de algún problema con el almacenamiento en memoria, continuamos sin bloquear la respuesta
             pass
         
-        # Preparar la respuesta solo con los datos necesarios
+        # Preparar la respuesta con los datos necesarios (incluye metadatos para el cliente)
         captcha_data = {
             "session_id": session_id,
             "captcha_image": {
-                "base64": img_base64
+                "base64": img_base64,
+                "content_type": content_type,
+                "src": img_src
             },
+            "captcha_div": {
+                "html": str(captcha_div),
+                "class": captcha_div.get('class', []),
+                "id": captcha_div.get('id')
+            },
+            "hidden_fields": hidden_fields,
+            "cookies": dict(session.cookies),
             "status": "success"
         }
         
