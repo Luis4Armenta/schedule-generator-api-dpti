@@ -4,14 +4,10 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes.course import router as course_router
-from routes.teacher import router as teacher_router
 from routes.schedule import router as schedule_router
 from routes.captcha import router as captcha_router
 from routes.login import router as login_router
 from courses.domain.ports.courses_repository import CourseRepository
-from teachers.domain.ports.teachers_repository import TeacherRepository
-from teachers.infrastructure.mongo_teachers_repository import MongoTeachersRepository
 from courses.infrastructure.mongo_courses_repository import MongoCourseRepository
 
 from utils.enums import Tags
@@ -23,20 +19,10 @@ app.version = '0.0.1'
 @app.on_event('startup')
 def startup_db_clients():
 
-  app.teachers = MongoTeachersRepository()
-  
-  app.teachers.connect()
-  
   app.courses = MongoCourseRepository()
   
   app.courses.connect()
   
-  
-  teacher_router.teachers = app.teachers  
-  course_router.teachers = app.teachers
-  schedule_router.teachers = app.teachers
-    
-  course_router.courses = app.courses  
   schedule_router.courses = app.courses  
   
 
@@ -50,8 +36,6 @@ app.add_middleware(
   allow_headers=["*"],
 )
 
-app.include_router(teacher_router, tags=[Tags.teachers])
-app.include_router(course_router, tags=[Tags.courses])
 app.include_router(schedule_router, tags=[Tags.schedules])
 app.include_router(captcha_router, tags=[Tags.captcha])
 app.include_router(login_router, tags=[Tags.login])
@@ -66,5 +50,4 @@ def message() -> HTMLResponse:
 
 @app.on_event('shutdown')
 def shutdown_db_clients():
-  app.teachers.disconnect()
   app.courses.disconnect()
