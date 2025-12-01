@@ -1,0 +1,53 @@
+........................................................                 [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.7-final-0 ________________
+
+Name                                                                Stmts   Miss  Cover
+---------------------------------------------------------------------------------------
+__init__.py                                                             0      0   100%
+courses/application/course.py                                          31      7    77%
+courses/application/course_filter/checkers.py                          40      1    98%
+courses/application/course_filter/filter.py                            17      0   100%
+courses/domain/model/course.py                                         26      0   100%
+courses/domain/ports/courses_repository.py                             31      9    71%
+courses/infrastructure/mongo_courses_repository.py                     75     53    29%
+main.py                                                                29      4    86%
+routes/__init__.py                                                      0      0   100%
+routes/captcha.py                                                      74     13    82%
+routes/login.py                                                       134     52    61%
+routes/schedule.py                                                    132    115    13%
+schedules/application/schedule.py                                      72     13    82%
+schedules/application/scraper_service.py                              151    128    15%
+schedules/domain/model/schedule.py                                      8      0   100%
+schedules/domain/ports/__init__.py                                      2      0   100%
+schedules/domain/ports/schedule_scraper_port.py                         9      2    78%
+schemas/__init__.py                                                     0      0   100%
+schemas/captcha.py                                                     20      0   100%
+schemas/login.py                                                       29      0   100%
+schemas/schedule.py                                                    86      0   100%
+tests/__init__.py                                                       0      0   100%
+tests/courses/__init__.py                                               0      0   100%
+tests/courses/course_filter/__init__.py                                 0      0   100%
+tests/courses/course_filter/checkers/__init__.py                        0      0   100%
+tests/courses/course_filter/checkers/test_availability_checker.py      24      0   100%
+tests/courses/course_filter/checkers/test_subject_checker.py           31      0   100%
+tests/courses/course_filter/checkers/test_teacher_checker.py           31      0   100%
+tests/courses/course_filter/checkers/test_time_checker.py              74      0   100%
+tests/courses/course_filter/test_filter.py                             33      0   100%
+tests/courses/test_course_service.py                                   37      0   100%
+tests/schedules/__init__.py                                             0      0   100%
+tests/schedules/test_schedule_service.py                               31      0   100%
+tests/teachers/__init__.py                                              0      0   100%
+tests/teachers/test_mongo_teacher_repository.py                        34     34     0%
+tests/teachers/test_teacher_service.py                                 37     37     0%
+tests/test_captcha.py                                                  88      0   100%
+tests/test_login.py                                                    66      1    98%
+tests/test_smoke.py                                                     5      0   100%
+tests/utils/__init__.py                                                 0      0   100%
+tests/utils/test_text.py                                               60      0   100%
+utils/enums.py                                                          7      0   100%
+utils/text.py                                                          30      0   100%
+---------------------------------------------------------------------------------------
+TOTAL                                                                1554    469    70%
+Coverage HTML written to dir reports/coverage_html
+56 passed in 9.10s
