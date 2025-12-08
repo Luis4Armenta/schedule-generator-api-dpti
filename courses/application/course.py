@@ -97,19 +97,17 @@ class CourseService:
     """Actualiza solo la disponibilidad de un curso"""
     return self.course_repository.update_course_availability(sequence, subject, availability)
 
-  def get_downloaded_periods(self, career: str, plan: str) -> dict:
-    """Obtiene períodos descargados con timestamps"""
-    return self.course_repository.get_downloaded_periods(career, plan)
+  def get_downloaded_periods(self, career: str, plan: str, shift: str = None) -> dict:
+    """Obtiene períodos descargados con timestamps para un turno específico"""
+    return self.course_repository.get_downloaded_periods(career, plan, shift)
 
-  def set_downloaded_periods(self, career: str, plan: str, periods: List[int], timestamp: float) -> None:
-    """Registra períodos descargados con timestamp"""
-    from typing import List
-    self.course_repository.set_downloaded_periods(career, plan, periods, timestamp)
+  def set_downloaded_periods(self, career: str, plan: str, periods: List[int], shift: str, timestamp: float) -> None:
+    """Registra períodos descargados con timestamp y turno"""
+    self.course_repository.set_downloaded_periods(career, plan, periods, shift, timestamp)
 
-  def check_missing_periods(self, career: str, plan: str, requested_periods: List[int]) -> List[int]:
-    """Verifica qué períodos faltan o están desactualizados"""
-    from typing import List
-    return self.course_repository.check_missing_periods(career, plan, requested_periods)
+  def check_missing_periods(self, career: str, plan: str, requested_periods: List[int], shift: str) -> List[int]:
+    """Verifica qué períodos faltan o están desactualizados para un turno específico"""
+    return self.course_repository.check_missing_periods(career, plan, requested_periods, shift)
 
 
 

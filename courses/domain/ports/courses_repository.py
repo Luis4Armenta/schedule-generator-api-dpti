@@ -39,18 +39,18 @@ class CourseRepository(ABC):
     pass
   
   @abstractmethod
-  def get_downloaded_periods(self, career: str, plan: str) -> Dict[str, float]:
-    """Obtiene períodos descargados con sus timestamps"""
+  def get_downloaded_periods(self, career: str, plan: str, shift: str = None) -> Dict[str, float]:
+    """Obtiene períodos descargados con sus timestamps para un turno específico"""
     pass
   
   @abstractmethod
-  def set_downloaded_periods(self, career: str, plan: str, periods: List[int], timestamp: float) -> None:
-    """Registra períodos descargados con timestamp"""
+  def set_downloaded_periods(self, career: str, plan: str, periods: List[int], shift: str, timestamp: float) -> None:
+    """Registra períodos descargados con timestamp y turno"""
     pass
   
   @abstractmethod
-  def check_missing_periods(self, career: str, plan: str, requested_periods: List[int]) -> List[int]:
-    """Verifica qué períodos faltan o están desactualizados"""
+  def check_missing_periods(self, career: str, plan: str, requested_periods: List[int], shift: str) -> List[int]:
+    """Verifica qué períodos faltan o están desactualizados para un turno específico"""
     pass
   
   @abstractmethod

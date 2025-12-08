@@ -117,33 +117,35 @@ class MongoCourseRepository(CourseRepository):
       print(f"Error updating availability: {e}")
       return False
 
-  def get_downloaded_periods(self, career: str, plan: str) -> dict:
-    """Obtiene los períodos descargados con sus timestamps para carrera+plan"""
-    metadata = self.database['course_metadata'].find_one(
-      {'career': career, 'plan': plan}
-    )
+  def get_downloaded_periods(self, career: str, plan: str, shift: str = None) -> dict:
+    """Obtiene los períodos descargados con sus timestamps para carrera+plan+turno"""
+    query = {'career': career, 'plan': plan}
+    if shift:
+      query['shift'] = shift
+    
+    metadata = self.database['course_metadata'].find_one(query)
     if not metadata:
       return {}
     return metadata.get('periods', {})
 
-  def set_downloaded_periods(self, career: str, plan: str, periods: List[int], timestamp: float) -> None:
-    """Registra los períodos descargados con timestamp"""
+  def set_downloaded_periods(self, career: str, plan: str, periods: List[int], shift: str, timestamp: float) -> None:
+    """Registra los períodos descargados con timestamp y turno"""
     # Obtener períodos existentes
-    existing = self.get_downloaded_periods(career, plan)
+    existing = self.get_downloaded_periods(career, plan, shift)
     
     # Actualizar con los nuevos períodos
     for period in periods:
       existing[str(period)] = timestamp
     
     self.database['course_metadata'].update_one(
-      {'career': career, 'plan': plan},
+      {'career': career, 'plan': plan, 'shift': shift},
       {'$set': {'periods': existing}},
       upsert=True
     )
 
-  def check_missing_periods(self, career: str, plan: str, requested_periods: List[int]) -> List[int]:
-    """Verifica qué períodos solicitados NO están descargados o están desactualizados (>7 días)"""
-    downloaded = self.get_downloaded_periods(career, plan)
+  def check_missing_periods(self, career: str, plan: str, requested_periods: List[int], shift: str) -> List[int]:
+    """Verifica qué períodos solicitados NO están descargados o están desactualizados (>7 días) para un turno específico"""
+    downloaded = self.get_downloaded_periods(career, plan, shift)
     current_time = time.time()
     week_in_seconds = 7 * 24 * 60 * 60
     
@@ -151,7 +153,7 @@ class MongoCourseRepository(CourseRepository):
     for period in requested_periods:
       period_str = str(period)
       if period_str not in downloaded:
-        # Período nunca descargado
+        # Período nunca descargado para este turno
         missing.append(period)
       else:
         # Verificar si está desactualizado

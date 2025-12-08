@@ -141,9 +141,10 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
       sys.stderr.write(f"[Endpoint] force_full=True, descargando todos los períodos: {missing_periods}\n")
       sys.stderr.flush()
     else:
-      # Verificar qué períodos faltan o están desactualizados
-      missing_periods = course_service.check_missing_periods(request.career, request.career_plan, request.plan_period)
+      # Verificar qué períodos faltan o están desactualizados para este turno
+      missing_periods = course_service.check_missing_periods(request.career, request.career_plan, request.plan_period, request.shift)
       sys.stderr.write(f"[Endpoint] Períodos solicitados: {request.plan_period}\n")
+      sys.stderr.write(f"[Endpoint] Turno: {request.shift}\n")
       sys.stderr.write(f"[Endpoint] Períodos que necesitan descarga: {missing_periods}\n")
       sys.stderr.flush()
     
@@ -221,8 +222,8 @@ async def download_schedules_endpoint(request: ScheduleDownloadRequest) -> Sched
       # Guardar en MongoDB
       saved_count = course_service.upload_courses(courses_for_db)
       
-      # Registrar períodos descargados con timestamp
-      course_service.set_downloaded_periods(request.career, request.career_plan, missing_periods, current_time)
+      # Registrar períodos descargados con timestamp y turno
+      course_service.set_downloaded_periods(request.career, request.career_plan, missing_periods, request.shift, current_time)
       
       sys.stderr.write(f"[Endpoint] Guardados {saved_count} cursos en MongoDB\n")
       sys.stderr.flush()
